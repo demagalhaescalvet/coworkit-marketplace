@@ -8,6 +8,18 @@ version: 0.1.0
 
 The Storefront API is a public GraphQL API designed for custom storefronts, mobile apps, and any client-side application. It provides read access to product data and write access to cart operations, with no authentication required for public queries.
 
+## Live Storefront Tools (MCP)
+
+When the Coworkit MCP server is connected, you can **execute Storefront API queries directly** against the live store. A Storefront Access Token is auto-generated on first use.
+
+| Tool | Description |
+|------|-------------|
+| `shopify_storefront_graphql` | Execute any Storefront API GraphQL query or mutation |
+| `shopify_storefront_products` | Browse products as customers see them (public pricing, availability) |
+| `shopify_storefront_collections` | Browse collections with their products |
+
+Use these tools to test how products appear on the storefront, debug pricing/availability issues, or prototype cart flows.
+
 ## API Basics
 
 ### Endpoint
