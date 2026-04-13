@@ -8,6 +8,23 @@ version: 0.1.0
 
 Custom data extends Shopify's built-in resources with your app-specific information. Use Metafields for simple key-value storage and Metaobjects for complex, structured data with their own lifecycle.
 
+## Live Custom Data Tools (MCP)
+
+When the Coworkit MCP server is connected, you can **read and write custom data directly** on the live store:
+
+| Tool | Description |
+|------|-------------|
+| `shopify_get_metafield_definitions` | List metafield definitions by owner type (PRODUCT, CUSTOMER, ORDER, etc.) |
+| `shopify_get_metafields` | Read metafield values for any resource by GID |
+| `shopify_set_metafield` | Create or update metafield values (batch up to 25) |
+| `shopify_get_metaobject_definitions` | List all metaobject type schemas in the store |
+| `shopify_get_metaobjects` | List metaobject instances by type handle |
+
+### Quick Start
+1. **Discover schema** → `shopify_get_metafield_definitions` with `owner_type: "PRODUCT"` to see what custom fields exist
+2. **Read values** → `shopify_get_metafields` with a product GID to see actual data
+3. **Write values** → `shopify_set_metafield` to create or update values
+
 ## Three-Step Workflow
 
 ### Step 1: Define Your Custom Data
