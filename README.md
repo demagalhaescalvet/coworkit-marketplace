@@ -6,7 +6,7 @@ Plugins for [Claude Cowork](https://claude.com/product/cowork) that connect your
 
 | Plugin | Description | Version |
 |--------|-------------|---------|
-| **[coworkit](./coworkit)** | Build Shopify apps and manage stores directly from Cowork. 40+ MCP tools, SessionStart hook support, live Admin API access, plus 16 skills for Admin API, Functions, Liquid, store operations, and advanced development. Secure GraphQL variable handling and comprehensive error diagnostics. | 5.0.0 |
+| **[coworkit](./coworkit)** | Build Shopify apps and manage stores directly from Cowork. 40+ MCP tools, SessionStart hook support, live Admin API access, plus 16 skills for Admin API, Functions, Liquid, store operations, and advanced development. Secure GraphQL variable handling and comprehensive error diagnostics. | 6.0.0 |
 
 ## Features
 
