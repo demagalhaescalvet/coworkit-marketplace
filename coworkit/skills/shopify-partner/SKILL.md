@@ -40,7 +40,7 @@ const PARTNER_API_KEY = process.env.SHOPIFY_PARTNER_API_KEY;
 const PARTNER_API_SECRET = process.env.SHOPIFY_PARTNER_API_SECRET;
 
 async function makePartnerAPIRequest(query) {
-  const response = await fetch('https://api.shopify.com/graphql/2024-10.json', {
+  const response = await fetch('https://api.shopify.com/graphql/2025-04.json', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -572,7 +572,7 @@ async function getAllApps() {
 ```typescript
 async function safePartnerAPICall(query, variables = {}) {
   try {
-    const response = await fetch('https://api.shopify.com/graphql/2024-10.json', {
+    const response = await fetch('https://api.shopify.com/graphql/2025-04.json', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

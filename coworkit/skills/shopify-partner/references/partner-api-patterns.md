@@ -344,7 +344,7 @@ async function updateMultipleApps(updates) {
 async function makeRequestWithRetry(query, maxRetries = 3, baseDelay = 1000) {
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      const response = await fetch('https://api.shopify.com/graphql/2024-10.json', {
+      const response = await fetch('https://api.shopify.com/graphql/2025-04.json', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

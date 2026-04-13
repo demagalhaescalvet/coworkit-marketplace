@@ -516,6 +516,6 @@ if (json.data?.metafieldsSet?.userErrors?.length > 0) {
 ## Next Steps
 
 - See `custom-data-patterns.md` for GraphQL CRUD examples and advanced patterns
-- Explore [Shopify Metafields documentation](https://shopify.dev/api/admin-graphql/2024-10/objects/metafield)
+- Explore [Shopify Metafields documentation](https://shopify.dev/api/admin-graphql/2025-04/objects/metafield)
 - Design your data model before defining metafields
 - Consider Metaobjects for complex, frequently-queried data structures

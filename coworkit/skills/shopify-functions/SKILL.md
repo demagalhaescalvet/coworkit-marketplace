@@ -311,7 +311,7 @@ handle = "product-discount"
 build = { interpreter = "node", command = "npm run build" }
 input_query = "input.graphql"
 function_type = "product-discount"
-API_version = "2024-10"
+API_version = "2025-04"
 
 [[configuration]]
 key = "discount_percentage"

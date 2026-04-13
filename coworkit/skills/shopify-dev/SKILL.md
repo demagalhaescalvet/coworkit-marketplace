@@ -154,7 +154,7 @@ const shopify = shopifyApp({
   apiSecret: process.env.SHOPIFY_API_SECRET,
   scopes: ['write_products', 'read_orders'],
   distribution: {
-    apiVersion: '2024-10',
+    apiVersion: '2025-04',
   },
 });
 
@@ -388,7 +388,7 @@ webhooks = [
 
 [build]
 dev_store_url = "my-dev-store.myshopify.com"
-api_version = "2024-10"
+api_version = "2025-04"
 
 [[extensions]]
 type = "product_subscription"

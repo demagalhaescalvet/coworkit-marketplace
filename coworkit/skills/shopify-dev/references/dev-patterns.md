@@ -80,7 +80,7 @@ shopify auth logout
 ```bash
 SHOPIFY_API_KEY=<key>
 SHOPIFY_API_SECRET=<secret>
-SHOPIFY_API_VERSION=2024-10
+SHOPIFY_API_VERSION=2025-04
 SHOPIFY_API_SCOPES=write_products,read_orders
 ```
 

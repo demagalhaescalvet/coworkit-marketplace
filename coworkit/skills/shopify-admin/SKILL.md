@@ -17,14 +17,14 @@ The Admin API uses versioned endpoints:
 https://{shop}.myshopify.com/admin/api/{version}/graphql.json
 ```
 
-Use stable versions like `2024-10` or `2024-07`. Check [Shopify API versioning](https://shopify.dev/api/admin-rest/2024-10) for the latest stable version.
+Use stable versions like `2025-04` or `2024-07`. Check [Shopify API versioning](https://shopify.dev/api/admin-rest/2025-04) for the latest stable version.
 
 ### Authentication
 
 Authenticate using an access token (from a custom app or public app):
 ```javascript
 const response = await fetch(
-  `https://${shopName}/admin/api/2024-10/graphql.json`,
+  `https://${shopName}/admin/api/2025-04/graphql.json`,
   {
     method: 'POST',
     headers: {
@@ -321,5 +321,5 @@ if (json.data && json.data.productUpdate?.userErrors.length > 0) {
 ## Next Steps
 
 - See `admin-api-patterns.md` for advanced patterns like staged uploads, app subscriptions, and access scope management.
-- Explore the [official Admin API docs](https://shopify.dev/api/admin-graphql/2024-10) for the complete schema.
+- Explore the [official Admin API docs](https://shopify.dev/api/admin-graphql/2025-04) for the complete schema.
 - Use the [Shopify CLI](https://shopify.dev/docs/apps/tools/cli) to scaffold apps and test queries locally.

@@ -98,7 +98,7 @@ const uploadResponse = await fetch(stagedTargets.url, {
 
 // Then create product with the resourceUrl
 const createProductResponse = await fetch(
-  `https://${shop}/admin/api/2024-10/graphql.json`,
+  `https://${shop}/admin/api/2025-04/graphql.json`,
   {
     method: 'POST',
     headers: {
