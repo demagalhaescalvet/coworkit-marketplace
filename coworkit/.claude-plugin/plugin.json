@@ -1,0 +1,8 @@
+{
+  "name": "coworkit",
+  "version": "3.0.0",
+  "description": "Build Shopify apps and manage stores directly from Cowork. Live Admin API access via MCP, plus skills for Liquid, Functions, and store operations.",
+  "author": {
+    "name": "Juan de Magalhaes"
+  }
+}

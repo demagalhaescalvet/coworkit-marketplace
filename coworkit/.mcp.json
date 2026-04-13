@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "coworkit-shopify": {
+      "type": "http",
+      "url": "https://mcp.lestcoworkit.com/mcp",
+      "description": "Live Shopify Admin API — query products, orders, customers, inventory, and execute GraphQL against your connected store."
+    }
+  }
+}
