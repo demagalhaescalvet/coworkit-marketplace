@@ -1,6 +1,6 @@
 {
   "name": "coworkit",
-  "version": "5.0.0",
+  "version": "6.0.0",
   "description": "The complete Shopify AI toolkit for Cowork — 16 skills, 8 commands, 40+ MCP tools covering Admin API, Storefront API, themes, metafields, discounts, fulfillments, translations, bulk operations, and more. Live store access via MCP.",
   "author": {
     "name": "Juan de Magalhaes"
