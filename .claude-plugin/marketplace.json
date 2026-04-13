@@ -7,7 +7,7 @@
         {
             "name": "coworkit",
             "source": "./coworkit",
-            "description": "Build Shopify apps and manage stores directly from Cowork. Live Admin API access via MCP, plus skills for Liquid, Functions, and store operations."
+            "description": "The complete Shopify AI toolkit for Cowork — 16 skills covering Admin API, Liquid, Functions, Hydrogen, Polaris extensions, POS, Storefront API, and more. Live store access via MCP."
         }
     ]
 }
