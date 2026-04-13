@@ -7,7 +7,7 @@
         {
             "name": "coworkit",
             "source": "./coworkit",
-            "description": "The complete Shopify AI toolkit for Cowork — 16 skills covering Admin API, Liquid, Functions, Hydrogen, Polaris extensions, POS, Storefront API, and more. Live store access via MCP."
+            "description": "The complete Shopify AI toolkit for Cowork — 16 skills, 7 commands, 40+ MCP tools covering Admin API, Storefront API, themes, metafields, discounts, fulfillments, translations, bulk operations, and more. Live store access via MCP."
         }
     ]
 }

@@ -3,7 +3,7 @@
     "coworkit-shopify": {
       "type": "http",
       "url": "https://mcp.lestcoworkit.com/mcp",
-      "description": "Live Shopify Admin API — query products, orders, customers, inventory, and execute GraphQL against your connected store."
+      "description": "Live Shopify store access — 40+ tools for products, orders, customers, inventory, themes, metafields, discounts, fulfillments, storefront API, translations, pages, blogs, webhooks, files, and bulk operations."
     }
   }
 }
