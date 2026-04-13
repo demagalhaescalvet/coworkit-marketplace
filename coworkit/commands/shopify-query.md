@@ -21,24 +21,60 @@ Output the query in a code block, followed by example variables if applicable, a
 
 ## Live Execution
 
-After building the query, ask the user if they want to run it against their store. If yes:
+After building the query, ask the user if they want to run it against their store. If yes, use the snippet below. It supports two transports:
 
-1. Read the store credentials:
+- **Proxy transport (default, App Store flow)** — uses `connection_key` + `proxy_url` from `~/.coworkit/config.json`. The Coworkit server handles token refresh and forwards the GraphQL call to Shopify.
+- **Direct transport (legacy custom-app flow)** — uses `token` + `store` from `~/.coworkit/config.json` and hits Shopify directly.
+
 ```bash
-STORE=$(cat ~/.coworkit/config.json | python3 -c "import sys,json; print(json.load(sys.stdin)['store'])")
-TOKEN=$(cat ~/.coworkit/config.json | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])")
+python3 - <<'PY' <<QUERY
+{"query": "<the-query>", "variables": {<variables-if-any>}}
+QUERY
+import json, os, sys, urllib.request
+
+cfg_path = os.path.expanduser('~/.coworkit/config.json')
+if not os.path.exists(cfg_path):
+    print('❌ Not connected. Run /shopify-auth-setup first.'); sys.exit(1)
+cfg = json.load(open(cfg_path))
+
+payload = sys.stdin.read().encode()
+
+if cfg.get('connection_key') and cfg.get('proxy_url'):
+    req = urllib.request.Request(
+        cfg['proxy_url'],
+        data=payload,
+        headers={
+            'Content-Type': 'application/json',
+            'Authorization': f"Bearer {cfg['connection_key']}",
+        },
+        method='POST',
+    )
+elif cfg.get('token') and cfg.get('store'):
+    req = urllib.request.Request(
+        f"https://{cfg['store']}/admin/api/2025-04/graphql.json",
+        data=payload,
+        headers={
+            'Content-Type': 'application/json',
+            'X-Shopify-Access-Token': cfg['token'],
+        },
+        method='POST',
+    )
+else:
+    print('❌ No usable credentials in config.json. Run /shopify-auth-setup.'); sys.exit(1)
+
+try:
+    with urllib.request.urlopen(req, timeout=30) as r:
+        print(json.dumps(json.loads(r.read()), indent=2))
+except urllib.error.HTTPError as e:
+    print(f"HTTP {e.code}: {e.read().decode(errors='replace')}")
+    sys.exit(1)
+PY
 ```
 
-2. If config file doesn't exist, tell the user to run `/shopify-connect` first.
+Rules when presenting results:
 
-3. Execute the query via direct API call:
-```bash
-curl -s -X POST "https://${STORE}/admin/api/2025-04/graphql.json" \
-  -H "Content-Type: application/json" \
-  -H "X-Shopify-Access-Token: ${TOKEN}" \
-  -d '{"query": "<the-query>", "variables": {<variables-if-any>}}' | python3 -m json.tool
-```
-
-4. For mutations: **always confirm with the user before executing** — show them exactly what will change.
-5. Present results in a clean, readable format (tables for lists, summaries for single resources).
-6. Check for `userErrors` in mutation responses — a 200 HTTP status does not mean the operation succeeded.
+1. **Always confirm mutations with the user before executing** — show them exactly what will change.
+2. Present results in a clean, readable format (tables for lists, summaries for single resources).
+3. Check for `userErrors` in mutation responses — a 200 HTTP status does not mean the operation succeeded.
+4. If the proxy returns 401, the connection key was revoked or the Coworkit app was reinstalled — ask the user to re-run `/shopify-auth-setup`.
+5. If Shopify returns 403, explain which scope is missing and ask the user to either (a) reinstall the Coworkit app to accept new scopes, or (b) add the scope in their Custom App settings if they're on the direct-token flow.

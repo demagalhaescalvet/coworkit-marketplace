@@ -7,18 +7,48 @@ CONFIG_FILE="$HOME/.coworkit/config.json"
 
 if [ ! -f "$CONFIG_FILE" ]; then
   echo "⚠️  Coworkit is not connected to a Shopify store."
-  echo "Run /shopify-connect or visit the Coworkit app in your Shopify admin to set up the connection."
+  echo "Run /shopify-auth-setup or visit the Coworkit app in your Shopify admin to set up the connection."
   exit 0
 fi
 
-# Read store info from config
-STORE=$(cat "$CONFIG_FILE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('store','unknown'))" 2>/dev/null)
-ROLE=$(cat "$CONFIG_FILE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('userRole','unknown'))" 2>/dev/null)
-STAFF=$(cat "$CONFIG_FILE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('staffName',''))" 2>/dev/null)
-SCOPES=$(cat "$CONFIG_FILE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('scopes',''))" 2>/dev/null)
+# Read config once, let python emit shell-safe KEY=VALUE lines.
+# Supports both the new connection-key flow and the legacy direct-token flow.
+eval "$(python3 - "$CONFIG_FILE" <<'PY'
+import json, os, shlex, sys
+try:
+    d = json.load(open(sys.argv[1]))
+except Exception as e:
+    sys.stderr.write(f"Config parse error: {e}\n")
+    raise SystemExit(0)
+
+def emit(k, v):
+    print(f"{k}={shlex.quote(str(v))}")
+
+emit("STORE", d.get("store", "unknown"))
+emit("ROLE", d.get("userRole", "unknown"))
+emit("STAFF", d.get("staffName", ""))
+emit("SCOPES", d.get("scopes", ""))
+if d.get("connection_key"):
+    emit("AUTH_MODE", "proxy")
+    emit("KEY_PREFIX", d["connection_key"][:12])
+elif d.get("token"):
+    emit("AUTH_MODE", "direct")
+    emit("KEY_PREFIX", "")
+else:
+    emit("AUTH_MODE", "unknown")
+    emit("KEY_PREFIX", "")
+PY
+)"
 
 echo "🏪 Coworkit connected to **${STORE}**"
 echo "   Role: ${ROLE} ${STAFF:+($STAFF)}"
+if [ "$AUTH_MODE" = "proxy" ]; then
+  echo "   Auth: connection key (${KEY_PREFIX}…) via Admin API proxy"
+elif [ "$AUTH_MODE" = "direct" ]; then
+  echo "   Auth: direct Admin API token (legacy custom app)"
+else
+  echo "   Auth: ⚠️  unknown — run /shopify-auth-setup to fix"
+fi
 echo "   MCP: shopify-mcp-server (24 tools, 3 resources)"
 echo "   Skills: 16 | Commands: 7"
 echo ""

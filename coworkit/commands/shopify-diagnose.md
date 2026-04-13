@@ -6,112 +6,122 @@ allowed-tools: Bash
 
 Diagnose and troubleshoot Coworkit connection issues with your Shopify store.
 
-## Step 1: Check Configuration File
+This command handles both supported credential formats:
 
-First, verify the config file exists and has valid JSON:
+- **Proxy (Coworkit app) flow** — `{store, connection_key, proxy_url}` in `~/.coworkit/config.json`.
+- **Direct (legacy custom-app) flow** — `{store, token}` in `~/.coworkit/config.json`.
 
-```bash
-if [ ! -f ~/.coworkit/config.json ]; then
-  echo "ERROR: Config file not found at ~/.coworkit/config.json"
-  echo "Solution: Run /shopify-connect first to set up your store connection."
-  exit 1
-fi
-
-# Validate JSON
-if ! python3 -c "import json; json.load(open('~/.coworkit/config.json'))" 2>/dev/null; then
-  echo "ERROR: Config file contains invalid JSON"
-  echo "Run /shopify-connect to create a valid config."
-  exit 1
-fi
-
-echo "✓ Config file exists and is valid JSON"
-```
-
-## Step 2: Verify Required Fields
-
-Check that store domain and token are present:
+## Run all checks
 
 ```bash
-STORE=$(cat ~/.coworkit/config.json | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('store',''))" 2>/dev/null)
-TOKEN=$(cat ~/.coworkit/config.json | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('token',''))" 2>/dev/null)
+python3 - <<'PY'
+import json, os, sys, urllib.request
 
-if [ -z "$STORE" ]; then
-  echo "ERROR: Store domain not found in config"
-  echo "Run /shopify-connect to set your store domain."
-  exit 1
-fi
+CFG = os.path.expanduser('~/.coworkit/config.json')
 
-if [ -z "$TOKEN" ]; then
-  echo "ERROR: Admin API token not found in config"
-  echo "Run /shopify-connect to set your API token."
-  exit 1
-fi
+def fail(msg, hint=None):
+    print(f"❌ {msg}")
+    if hint:
+        print(f"   → {hint}")
+    sys.exit(1)
 
-echo "✓ Store domain found: $STORE"
-echo "✓ API token found (first 10 chars): ${TOKEN:0:10}..."
+# 1. Config file exists + valid JSON
+if not os.path.exists(CFG):
+    fail("Config file not found at ~/.coworkit/config.json",
+         "Run /shopify-auth-setup (recommended) or /shopify-connect.")
+try:
+    cfg = json.load(open(CFG))
+except Exception as e:
+    fail(f"Config file contains invalid JSON: {e}",
+         "Re-run /shopify-auth-setup to regenerate it.")
+
+print("✓ Config file exists and is valid JSON")
+
+# 2. Identify transport
+store = cfg.get('store')
+has_key = bool(cfg.get('connection_key') and cfg.get('proxy_url'))
+has_token = bool(cfg.get('token'))
+
+if not store:
+    fail("`store` missing from config",
+         "Re-run /shopify-auth-setup or /shopify-connect.")
+
+if has_key:
+    mode = 'proxy'
+    print(f"✓ Transport: Coworkit proxy ({cfg['proxy_url']})")
+    print(f"✓ Key prefix: {cfg['connection_key'][:12]}…")
+elif has_token:
+    mode = 'direct'
+    t = cfg['token']
+    print(f"✓ Transport: direct Admin API token (legacy)")
+    print(f"✓ Token: {t[:10]}...{t[-4:]}")
+else:
+    fail("Config present but has neither `connection_key` nor `token`",
+         "Re-run /shopify-auth-setup.")
+
+print(f"✓ Store: {store}")
+
+# 3. Test the API with a cheap query
+q = {"query": "{ shop { name myshopifyDomain currencyCode } }"}
+if mode == 'proxy':
+    req = urllib.request.Request(
+        cfg['proxy_url'],
+        data=json.dumps(q).encode(),
+        headers={'Content-Type': 'application/json',
+                 'Authorization': f"Bearer {cfg['connection_key']}"},
+        method='POST',
+    )
+else:
+    req = urllib.request.Request(
+        f"https://{store}/admin/api/2025-04/graphql.json",
+        data=json.dumps(q).encode(),
+        headers={'Content-Type': 'application/json',
+                 'X-Shopify-Access-Token': cfg['token']},
+        method='POST',
+    )
+
+try:
+    with urllib.request.urlopen(req, timeout=15) as r:
+        body = json.loads(r.read())
+except urllib.error.HTTPError as e:
+    code = e.code
+    text = e.read().decode(errors='replace')
+    if code == 401 and mode == 'proxy':
+        fail(f"HTTP 401 from proxy: {text[:200]}",
+             "Your connection key was revoked or the Coworkit app was reinstalled. Run /shopify-auth-setup to get a new code.")
+    if code == 401 and mode == 'direct':
+        fail(f"HTTP 401 from Shopify: {text[:200]}",
+             "Your Admin API token is invalid or expired. Re-issue it in Shopify admin → Settings → Apps and sales channels → Develop apps.")
+    if code == 403:
+        fail(f"HTTP 403: {text[:200]}",
+             "Missing Admin API scope. Reinstall the Coworkit app (proxy flow) or adjust scopes in your Custom App (direct flow).")
+    fail(f"HTTP {code}: {text[:200]}")
+except Exception as e:
+    fail(f"Request failed: {e}",
+         "Check that the store domain is correct (must be <name>.myshopify.com).")
+
+if body.get('errors'):
+    fail(f"GraphQL errors: {json.dumps(body['errors'])[:300]}")
+
+shop = body.get('data', {}).get('shop', {})
+if not shop:
+    fail(f"Unexpected response: {json.dumps(body)[:300]}")
+
+print(f"✓ Live API working — shop: {shop.get('name')!r} ({shop.get('myshopifyDomain')}, {shop.get('currencyCode')})")
+print()
+print("All checks passed. You can use /shopify-query, /shopify-store, etc.")
+PY
 ```
 
-## Step 3: Test GraphQL Connection
+## Common failure modes
 
-Attempt a simple GraphQL query to verify the API connection:
+| Symptom | Likely cause | Fix |
+| --- | --- | --- |
+| `Config file not found` | First-time setup or config deleted | Run `/shopify-auth-setup` (recommended) or `/shopify-connect` |
+| `HTTP 401` on proxy flow | Connection key revoked or app reinstalled | `/shopify-auth-setup` → generate new code |
+| `HTTP 401` on direct flow | Admin API token expired/regenerated | Re-issue token in Shopify admin → Settings → Apps and sales channels → Develop apps |
+| `HTTP 403` | Missing Admin API scope | Reinstall Coworkit app to accept new scopes, or update Custom App scopes |
+| `Request failed: getaddrinfo …` | Wrong store domain | `store` must be `<name>.myshopify.com`, not your custom domain |
+| `Non-expiring access tokens are no longer accepted` | Old `shpat_*` token from pre-2025 custom app | Re-issue the Custom App token, or switch to `/shopify-auth-setup` |
 
-```bash
-echo "Testing API connection with a simple query..."
-
-RESPONSE=$(curl -s -X POST "https://${STORE}/admin/api/2025-04/graphql.json" \
-  -H "Content-Type: application/json" \
-  -H "X-Shopify-Access-Token: ${TOKEN}" \
-  -d '{"query": "{ shop { name myshopifyDomain currencyCode } }"}')
-
-# Check for errors
-if echo "$RESPONSE" | grep -q '"errors"'; then
-  ERROR_MSG=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('errors',[{}])[0].get('message','Unknown error'))" 2>/dev/null)
-  echo "ERROR: GraphQL query failed"
-  echo "Message: $ERROR_MSG"
-  
-  if echo "$ERROR_MSG" | grep -iq "unauthorized\|invalid"; then
-    echo "SOLUTION: Your API token may be invalid or expired."
-    echo "- Go to Shopify admin → Settings → Apps and sales channels → Develop apps"
-    echo "- Click on 'Cowork Access' → Admin API access tokens"
-    echo "- Regenerate the token and run /shopify-connect"
-  fi
-  exit 1
-fi
-
-# Extract shop name
-SHOP_NAME=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('data',{}).get('shop',{}).get('name','Unknown'))" 2>/dev/null)
-
-echo "✓ GraphQL connection successful"
-echo "✓ Connected shop: $SHOP_NAME"
-echo "✓ Shop domain: $(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('data',{}).get('shop',{}).get('myshopifyDomain','Unknown'))" 2>/dev/null)"
-```
-
-## Step 4: Check MCP Server Status
-
-Verify MCP server connectivity (if applicable):
-
-```bash
-if command -v ps &> /dev/null; then
-  if ps aux | grep -q "shopify.*mcp\|coworkit.*server"; then
-    echo "✓ Shopify MCP server appears to be running"
-  else
-    echo "⚠ Shopify MCP server not detected in running processes"
-    echo "Note: This is normal if using cloud-based MCP."
-  fi
-fi
-```
-
-## Summary
-
-If all checks pass:
-- Your Coworkit connection is working correctly
-- You can now use /shopify-query, /shopify-store, and other commands
-
-If a check fails:
-- Follow the specific error message and solution provided above
-- Run /shopify-diagnose again to verify the fix
-- If issues persist, check your store's API token hasn't been revoked in Shopify admin
-
-## Verbose Mode
-
-For detailed debugging output, re-run with verbose flag for full response bodies and additional diagnostics.
+If the check still fails after following the fix, run this command again with the `verbose` argument to capture full response bodies.
