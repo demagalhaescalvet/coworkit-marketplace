@@ -8,6 +8,28 @@ version: 0.1.0
 
 Liquid is Shopify's template language for creating dynamic themes and customizing the storefront. This skill covers Liquid basics, theme architecture, sections, blocks, and common patterns.
 
+## Live Theme Tools (MCP)
+
+When the Coworkit MCP server is connected, you have **direct access** to read and write theme files on the live store. Use these MCP tools for theme development:
+
+| Tool | Description |
+|------|-------------|
+| `shopify_get_themes` | List all themes (find the MAIN/published theme and unpublished themes) |
+| `shopify_get_theme_files` | List files in a theme, optionally filtered by filename |
+| `shopify_read_theme_file` | Read the content of a specific file (Liquid, JSON, CSS, JS) |
+| `shopify_write_theme_file` | Create or update files — supports batch writes up to 10 files |
+| `shopify_delete_theme_file` | Delete files from a theme |
+
+### Recommended Workflow
+
+1. **List themes** → `shopify_get_themes` to find the MAIN theme ID and any unpublished themes
+2. **Browse files** → `shopify_get_theme_files` with the theme ID to see the file tree
+3. **Read a file** → `shopify_read_theme_file` to get the current content before editing
+4. **Write to UNPUBLISHED theme first** → Use `shopify_write_theme_file` on an unpublished theme to test changes safely
+5. **Preview** → The merchant can preview the unpublished theme in Shopify admin before publishing
+
+> ⚠️ **Caution**: Writing to the MAIN theme affects the live store immediately. Always prefer writing to an unpublished theme first.
+
 ## Liquid Basics
 
 ### Objects, Tags, and Filters
