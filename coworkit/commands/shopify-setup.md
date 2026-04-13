@@ -25,43 +25,41 @@ node --version
 
 That's the only prerequisite. The Shopify Dev MCP server uses npx (bundled with Node.js).
 
-## Step 3: Connect to Store via Custom App Token
+## Step 3: Pick a connection flow
 
-Guide the user through creating a Custom App in their Shopify admin. This is necessary because Cowork runs in a sandboxed environment that cannot open a browser for OAuth. A Custom App provides a static API token that works perfectly here.
+There are two ways to give this plugin access to a store. Ask the user which one they want:
 
-Walk them through these steps one at a time, waiting for confirmation at each:
+**Option A — Coworkit app (recommended).** The user installs the public Coworkit app on their store from the Shopify App Store. The app handles OAuth, stores the offline token server-side, refreshes it automatically, and exposes a one-time **connection code** the user pastes into their terminal. This is the only flow that works with Shopify's 2025+ expiring-token requirements without manual re-issuance.
 
-**3a. Open Custom Apps settings:**
-Tell the user: "In your Shopify admin, go to **Settings → Apps and sales channels → Develop apps**."
-- If they see "Allow custom app development" button, they need to click it first (requires store owner permission)
+→ Hand off to `/shopify-auth-setup`, which walks the user through installing the app, generating the connection code, pasting the setup command, and verifying the connection.
 
-**3b. Create the app:**
-Tell the user: "Click **Create an app**, name it something like 'Cowork Access', and click Create app."
+**Option B — Custom App (direct token, advanced).** The user manually creates a Custom App in their Shopify admin and gives this plugin the Admin API access token directly. Works, but the token is an expiring token that must be re-issued periodically, and the user is responsible for scope changes. Use this only when installing the Coworkit app isn't possible.
 
-**3c. Configure API scopes:**
-Tell the user: "Click **Configure Admin API scopes** and select these scopes:"
+→ If the user chooses this, continue with Step 3b below. Otherwise, run `/shopify-auth-setup` and skip to Step 5.
 
-Present this checklist:
+## Step 3b (only for Custom App flow)
+
+Walk the user through creating a Custom App one step at a time:
+
+**Open Custom Apps settings:** "In your Shopify admin, go to **Settings → Apps and sales channels → Develop apps**." If they see "Allow custom app development", they need to click it first (store-owner permission required).
+
+**Create the app:** "Click **Create an app**, name it 'Cowork Access', click Create app."
+
+**Configure Admin API scopes:** select at least:
 - `read_products` + `write_products` — Manage products
 - `read_orders` + `write_orders` — View and manage orders
 - `read_customers` + `write_customers` — View and manage customers
 - `read_inventory` + `write_inventory` — Manage stock levels
 - `read_content` + `write_content` — Metaobjects and pages
 
-Then: "Click **Save** when done."
+Click **Save**.
 
-**3d. Install the app:**
-Tell the user: "Click the **Install app** button at the top, then confirm by clicking **Install**."
+**Install the app:** click the **Install app** button at the top, then confirm.
 
-**3e. Copy the token:**
-Tell the user: "You'll see **Admin API access token** — click **Reveal token once** and copy it. This token is only shown once, so make sure to copy it now."
+**Copy the token:** "Reveal and copy the **Admin API access token** — it's only shown once."
 
-**3f. Provide the token:**
-Ask for two things:
-1. The Admin API access token they just copied
-2. Their store domain (the `something.myshopify.com` address)
+**Provide the token and store domain**, then save the config:
 
-**IMPORTANT**: Once the user provides the token, save it to a config file for this session:
 ```bash
 mkdir -p ~/.coworkit
 cat > ~/.coworkit/config.json << 'JSONEOF'
@@ -73,33 +71,66 @@ JSONEOF
 chmod 600 ~/.coworkit/config.json
 ```
 
+Remind the user: this token is an **expiring** token under Shopify's current rules. When it stops working, they'll need to re-issue it from the same Custom App page.
+
 ## Step 4: Verify Connection
 
-Test the connection with a direct API call:
 ```bash
-STORE=$(cat ~/.coworkit/config.json | python3 -c "import sys,json; print(json.load(sys.stdin)['store'])")
-TOKEN=$(cat ~/.coworkit/config.json | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])")
-curl -s -X POST "https://${STORE}/admin/api/2025-04/graphql.json" \
-  -H "Content-Type: application/json" \
-  -H "X-Shopify-Access-Token: ${TOKEN}" \
-  -d '{"query": "{ shop { name myshopifyDomain currencyCode } }"}' | python3 -m json.tool
+python3 - <<'PY'
+import json, os, sys, urllib.request
+cfg = json.load(open(os.path.expanduser('~/.coworkit/config.json')))
+q = {"query": "{ shop { name myshopifyDomain currencyCode } }"}
+
+if cfg.get('connection_key') and cfg.get('proxy_url'):
+    req = urllib.request.Request(
+        cfg['proxy_url'],
+        data=json.dumps(q).encode(),
+        headers={'Content-Type': 'application/json',
+                 'Authorization': f"Bearer {cfg['connection_key']}"},
+        method='POST')
+elif cfg.get('token') and cfg.get('store'):
+    req = urllib.request.Request(
+        f"https://{cfg['store']}/admin/api/2025-04/graphql.json",
+        data=json.dumps(q).encode(),
+        headers={'Content-Type': 'application/json',
+                 'X-Shopify-Access-Token': cfg['token']},
+        method='POST')
+else:
+    print('❌ No usable credentials'); sys.exit(1)
+
+try:
+    with urllib.request.urlopen(req, timeout=10) as r:
+        print(json.dumps(json.loads(r.read()), indent=2))
+except urllib.error.HTTPError as e:
+    print(f"HTTP {e.code}: {e.read().decode(errors='replace')}")
+PY
 ```
 
-If successful, show the store name and currency. If it fails, troubleshoot:
-- 401 error → token is invalid or was not copied correctly
-- Connection error → store domain is wrong
-- 403 error → scopes are insufficient, need to reconfigure
+If successful, show the store name and currency. If it fails, troubleshoot via `/shopify-diagnose`.
 
 ## Step 5: Live Demo
 
-Fetch the first 5 products to demonstrate it works:
+Fetch the first 5 products to demonstrate it works. Use the same Python transport selector:
+
 ```bash
-STORE=$(cat ~/.coworkit/config.json | python3 -c "import sys,json; print(json.load(sys.stdin)['store'])")
-TOKEN=$(cat ~/.coworkit/config.json | python3 -c "import sys,json; print(json.load(sys.stdin)['token'])")
-curl -s -X POST "https://${STORE}/admin/api/2025-04/graphql.json" \
-  -H "Content-Type: application/json" \
-  -H "X-Shopify-Access-Token: ${TOKEN}" \
-  -d '{"query": "{ products(first: 5) { edges { node { title status totalInventory priceRangeV2 { minVariantPrice { amount currencyCode } } } } } }"}' | python3 -m json.tool
+python3 - <<'PY'
+import json, os, sys, urllib.request
+cfg = json.load(open(os.path.expanduser('~/.coworkit/config.json')))
+q = {"query": "{ products(first: 5) { edges { node { title status totalInventory priceRangeV2 { minVariantPrice { amount currencyCode } } } } } }"}
+
+if cfg.get('connection_key') and cfg.get('proxy_url'):
+    req = urllib.request.Request(cfg['proxy_url'], data=json.dumps(q).encode(),
+        headers={'Content-Type': 'application/json',
+                 'Authorization': f"Bearer {cfg['connection_key']}"}, method='POST')
+else:
+    req = urllib.request.Request(f"https://{cfg['store']}/admin/api/2025-04/graphql.json",
+        data=json.dumps(q).encode(),
+        headers={'Content-Type': 'application/json',
+                 'X-Shopify-Access-Token': cfg['token']}, method='POST')
+
+with urllib.request.urlopen(req, timeout=15) as r:
+    print(json.dumps(json.loads(r.read()), indent=2))
+PY
 ```
 
 Present results in a clean table:
@@ -114,7 +145,9 @@ If the store has no products, mention they can create one with `/shopify-store c
 
 Introduce the available commands with practical examples:
 
-- `/shopify-connect` — Reconnect or switch to a different store
+- `/shopify-auth-setup` — Connect (or reconnect) via the Coworkit app
+- `/shopify-connect` — Manually configure a Custom App (direct token) connection
+- `/shopify-diagnose` — Troubleshoot a broken connection
 - `/shopify-query` — "Show me all orders from this week" → builds and runs the query
 - `/shopify-store` — "Create a product called Summer Hat at $29.99" → creates it directly
 - `/shopify-validate` — "Check if this Liquid template is correct" → validates against schemas
